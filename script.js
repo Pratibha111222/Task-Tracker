@@ -1,108 +1,75 @@
+ 
+    const taskForm = document.getElementById('task-form');
+    const taskInput = document.getElementById('task-input');
+    const taskList = document.getElementById('task-list');
+    const filterButtons = document.querySelectorAll('.filter button');
 
-document.addEventListener('DOMContentLoaded', loadTasks);
-document.getElementById('task-input').addEventListener('keypress', function(event) {
-  if (event.key === 'Enter' && event.target.value.trim() !== '') {
-    addTask(event.target.value);
-    event.target.value = ''; 
-  }
-});
+    let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 
+    function renderTasks(filter = 'all') {
+      taskList.innerHTML = '';
+      const filteredTasks = tasks.filter(task => {
+        if (filter === 'completed') return task.completed;
+        if (filter === 'pending') return !task.completed;
+        return true;
+      });
 
-function addTask(taskText) {
-  const tasks = getTasksFromStorage();
-  const newTask = {
-    id: Date.now(),
-    text: taskText,
-    completed: false
-  };
-  tasks.push(newTask);
-  saveTasksToStorage(tasks);
-  renderTasks(tasks);
-}
+      filteredTasks.forEach((task, index) => {
+        const taskEl = document.createElement('div');
+        taskEl.className = `task ${task.completed ? 'completed' : ''}`;
 
+        taskEl.innerHTML = `
+          <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleComplete(${index})" />
+          <span>${task.text}</span>
+          <div class="actions">
+            <button class="edit" onclick="editTask(${index})">Edit</button>
+            <button class="delete" onclick="deleteTask(${index})">Delete</button>
+          </div>
+        `;
 
-function renderTasks(tasks, filter = 'all') {
-  const taskList = document.getElementById('task-list');
-  taskList.innerHTML = ''; 
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'completed') return task.completed;
-    if (filter === 'pending') return !task.completed;
-    return true;
-  });
+        taskList.appendChild(taskEl);
+      });
 
-  filteredTasks.forEach(task => {
-    const li = document.createElement('li');
-    li.classList.add('task-item');
-    if (task.completed) li.classList.add('completed');
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
 
-    li.innerHTML = `
-      <span onclick="toggleTaskCompletion(${task.id})">${task.text}</span>
-      <button onclick="deleteTask(${task.id})">Delete</button>
-    `;
+    function addTask(e) {
+      e.preventDefault();
+      const text = taskInput.value.trim();
+      if (text) {
+        tasks.push({ text, completed: false });
+        taskInput.value = '';
+        renderTasks();
+      }
+    }
 
-    taskList.appendChild(li);
-  });
-}
+    function editTask(index) {
+      const newText = prompt('Edit your task:', tasks[index].text);
+      if (newText !== null) {
+        tasks[index].text = newText.trim();
+        renderTasks();
+      }
+    }
 
+    function deleteTask(index) {
+      tasks.splice(index, 1);
+      renderTasks();
+    }
 
-function toggleTaskCompletion(taskId) {
-  const tasks = getTasksFromStorage();
-  const task = tasks.find(t => t.id === taskId);
-  task.completed = !task.completed;
-  saveTasksToStorage(tasks);
-  renderTasks(tasks, getCurrentFilter());
-}
+    function toggleComplete(index) {
+      tasks[index].completed = !tasks[index].completed;
+      renderTasks();
+    }
 
+    filterButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelector('.filter .active').classList.remove('active');
+        button.classList.add('active');
+        renderTasks(button.dataset.filter);
+      });
+    });
 
-function deleteTask(taskId) {
-  let tasks = getTasksFromStorage();
-  tasks = tasks.filter(t => t.id !== taskId);
-  saveTasksToStorage(tasks);
-  renderTasks(tasks, getCurrentFilter());
-}
+    taskForm.addEventListener('submit', addTask);
 
-
-function getTasksFromStorage() {
-  const tasks = localStorage.getItem('tasks');
-  return tasks ? JSON.parse(tasks) : [];
-}
-
-/
-function saveTasksToStorage(tasks) {
-  localStorage.setItem('tasks', JSON.stringify(tasks));
-}
-
-
-document.getElementById('all-btn').addEventListener('click', () => {
-  setFilter('all');
-});
-document.getElementById('completed-btn').addEventListener('click', () => {
-  setFilter('completed');
-});
-document.getElementById('pending-btn').addEventListener('click', () => {
-  setFilter('pending');
-});
-
-
-function setFilter(filter) {
-  const tasks = getTasksFromStorage();
-  renderTasks(tasks, filter);
-  document.querySelectorAll('.filters button').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.getElementById(`${filter}-btn`).classList.add('active');
-}
-
-
-function getCurrentFilter() {
-  if (document.getElementById('completed-btn').classList.contains('active')) return 'completed';
-  if (document.getElementById('pending-btn').classList.contains('active')) return 'pending';
-  return 'all';
-}
-
-
-function loadTasks() {
-  const tasks = getTasksFromStorage();
-  renderTasks(tasks, 'all');
-}
-
+    renderTasks();
+ 
